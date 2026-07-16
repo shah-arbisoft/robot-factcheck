@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Fact-check the Robot</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#129302;</text></svg>">
+</head>
+<body>
+
+<!-- ============ INTRO ============ -->
+<section id="screen-intro" class="screen active">
+  <div class="card">
+    <div class="robot-face">&#129302;</div>
+    <h1>Can you fact-check a robot?</h1>
+    <p class="tagline">A computer program looked at photos and made claims like
+      <em>&ldquo;the book is on the box&rdquo;</em>. Some are right, some are wrong.
+      <strong>You judge them.</strong></p>
+
+    <div class="how">
+      <div class="how-item">
+        <span class="how-icon">&#127919;</span>
+        <p>Each photo shows <span class="chip chip-s">one thing</span> in a red box and
+           <span class="chip chip-o">another</span> in a blue box, plus a claim about them.</p>
+      </div>
+      <div class="how-item">
+        <span class="how-icon">&#9889;</span>
+        <p>Tap <b class="tt">TRUE</b> only if the claim is <b>clearly true</b>.
+           Wrong <i>or can&rsquo;t tell</i>? Tap <b class="tf">WRONG</b>. Be strict!</p>
+      </div>
+      <div class="how-item">
+        <span class="how-icon">&#128247;</span>
+        <p><b>Left / right / in&nbsp;front / behind</b> are always from the
+           <b>camera&rsquo;s</b> point of view. <b>On / under</b> means physically resting
+           on &mdash; a held object doesn&rsquo;t count.</p>
+      </div>
+    </div>
+
+    <p class="time-note">&#9201;&#65039; Takes about 3 minutes &middot; 15 photos</p>
+    <button id="btn-start" class="btn btn-primary">Start &#9654;</button>
+    <p id="intro-progress" class="community-note"></p>
+
+    <details class="fineprint">
+      <summary>About this study</summary>
+      <p>This quiz collects anonymous judgments for an MSc Data Science dissertation
+      (University of Surrey) that evaluates an automatic image-annotation tool.
+      No names, emails, or IP addresses are collected &mdash; only your answers.
+      By playing you agree your anonymous answers may be used in the dissertation.
+      Photos are from <i>A Spatial Relationship Aware Dataset for Robotics</i>
+      (Wang&nbsp;et&nbsp;al., 2025), CC-BY&nbsp;4.0. Questions:
+      shahhussain2044@gmail.com</p>
+    </details>
+  </div>
+</section>
+
+<!-- ============ GAME ============ -->
+<section id="screen-game" class="screen">
+  <header class="game-header">
+    <div class="progress-track"><div id="progress-fill" class="progress-fill"></div></div>
+    <div class="header-row">
+      <span id="progress-label">1 / 15</span>
+      <button id="btn-help" class="btn-icon" title="Rules">?</button>
+    </div>
+  </header>
+
+  <div class="stage">
+    <div id="img-wrap" class="img-wrap">
+      <div id="zoom-layer" class="zoom-layer">
+        <img id="photo" alt="scene photo" draggable="false">
+        <div id="box-s" class="obox obox-s"></div>
+        <div id="box-o" class="obox obox-o"></div>
+      </div>
+      <span id="zoom-hint" class="zoom-hint">tap for whole scene</span>
+    </div>
+
+    <div id="claim" class="claim"></div>
+    <div id="claim-hint" class="claim-hint"></div>
+
+    <div class="answer-row">
+      <button id="btn-false" class="btn btn-false">&#10007;<span>WRONG<small>or can&rsquo;t tell</small></span></button>
+      <button id="btn-true"  class="btn btn-true">&#10003;<span>TRUE<small>clearly true</small></span></button>
+    </div>
+
+    <button id="btn-note" class="btn-ghost">&#128221; something odd? add a note</button>
+    <div id="note-box" class="note-box hidden">
+      <input id="note-input" type="text" maxlength="200" placeholder="optional note, sent with your answer">
+    </div>
+  </div>
+</section>
+
+<!-- ============ DONE ============ -->
+<section id="screen-done" class="screen">
+  <div class="card">
+    <div id="done-emoji" class="robot-face">&#127881;</div>
+    <h1 id="done-title">Nice work!</h1>
+    <p id="done-stats" class="tagline"></p>
+    <div class="community">
+      <p id="community-label">Community goal</p>
+      <div class="progress-track big"><div id="community-fill" class="progress-fill"></div></div>
+      <p id="community-note" class="community-note"></p>
+    </div>
+    <button id="btn-more" class="btn btn-primary">Judge 15 more &#9654;</button>
+    <button id="btn-share" class="btn btn-secondary">&#128279; Share with a friend</button>
+    <p id="share-feedback" class="community-note"></p>
+  </div>
+</section>
+
+<!-- ============ HELP OVERLAY ============ -->
+<div id="help-overlay" class="overlay hidden">
+  <div class="card overlay-card">
+    <h2>The rules</h2>
+    <ul class="rules">
+      <li><b>TRUE</b> = the claim is clearly true in the photo.</li>
+      <li><b>WRONG</b> = the claim is wrong <b>or</b> you can&rsquo;t tell. When in doubt, WRONG.</li>
+      <li><b>on / under</b>: the thing physically rests on the other (or the reverse).
+          A held object does <b>not</b> count as resting.</li>
+      <li><b>left / right / in front of / behind</b>: from the <b>camera&rsquo;s</b> point of view.
+          &ldquo;In front of&rdquo; = nearer the camera.</li>
+      <li><b>near</b>: the two things are next to each other, close relative to their size.</li>
+      <li>The <span class="chip chip-s">red box</span> is the first thing in the claim,
+          the <span class="chip chip-o">blue box</span> the second. Judge <i>those exact ones</i>,
+          even if similar objects are nearby.</li>
+    </ul>
+    <button id="btn-help-close" class="btn btn-primary">Got it</button>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

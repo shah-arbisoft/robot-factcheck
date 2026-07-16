@@ -1,0 +1,4 @@
+# analysis inputs/outputs contain author verdicts + raw votes - never publish
+analysis/votes*.csv
+analysis/majority_verdicts.csv
+analysis/report.json
