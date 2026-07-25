@@ -102,5 +102,10 @@ Ties (e.g. 1 y vs 1 n) resolve to `n`, matching the protocol's
   object a claim is about, that claim is dropped rather than shown.
 - Local test mode: while `BACKEND_URL` is empty the site banner says
   "test mode" and answers stay in the browser's localStorage.
+- GitHub Pages caches assets for 10 minutes, so returning visitors can run
+  old code. `index.html` loads `style.css` / `config.js` / `app.js` with a
+  `?v=N` query and `app.js` reuses its own `N` for `items.json` — **bump
+  `?v=` in `index.html` whenever the claim set is rebuilt**, otherwise a
+  cached script could submit votes against renumbered items.
 - Image credit: *A Spatial Relationship Aware Dataset for Robotics*
   (Wang et al., 2025), CC-BY 4.0. The page is `noindex`.

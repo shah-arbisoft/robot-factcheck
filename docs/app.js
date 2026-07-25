@@ -8,6 +8,9 @@
   var TARGET = CFG.TARGET_VOTES_PER_ITEM || 3;
   var LOCK_MS = CFG.MIN_ANSWER_MS || 350;
   var TEST_MODE = BACKEND === "";
+  // this script's own ?v= from index.html, reused for items.json so a cached
+  // app.js can never be paired with a freshly rebuilt (renumbered) claim set
+  var VERSION = (document.currentScript && document.currentScript.src.split("?v=")[1]) || "";
 
   // ---------- state ----------
   var items = [];          // all items from items.json
@@ -72,7 +75,9 @@
     return new Promise(function (resolve, reject) {
       var cb = "__fc_cb" + Math.floor(Math.random() * 1e9);
       var script = document.createElement("script");
-      var timer = setTimeout(function () { cleanup(); reject(new Error("timeout")); }, timeoutMs || 6000);
+      // generous: a cold Apps Script can take several seconds, and this only
+      // fetches the progress counter — the quiz itself is usable meanwhile
+      var timer = setTimeout(function () { cleanup(); reject(new Error("timeout")); }, timeoutMs || 12000);
       function cleanup() {
         clearTimeout(timer);
         delete window[cb];
@@ -350,7 +355,7 @@
   });
 
   // ---------- boot ----------
-  fetch("items.json")
+  fetch("items.json" + (VERSION ? "?v=" + VERSION : ""))
     .then(function (r) { return r.json(); })
     .then(function (data) {
       items = data;
