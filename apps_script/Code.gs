@@ -41,7 +41,7 @@ function doPost(e) {
         String(v.note || '').slice(0, 500),
         Number(v.batch) || 0
       ];
-    }).filter(function (r) { return r[2] >= 1 && r[2] <= 150; });
+    }).filter(function (r) { return r[2] >= 1 && r[2] <= 5000; });
 
     if (rows.length) {
       var lock = LockService.getScriptLock();

@@ -1,25 +1,41 @@
-# Fact-check the Robot — crowdsourced blind audit
+# Fact-check the Robot — crowdsourced validation
 
-A tiny web game that distributes the 150-item blind re-audit
-(`outputs/audit_blind/`) across many casual volunteers instead of one
-exhausted classmate. Each visitor judges a batch of 15 claims
+A tiny web game that crowd-validates the automatic annotator's labels. The
+pool is a stratified sample of ~2000 claims (286 per predicate) drawn from the
+tool's predictions on object pairs the human annotators never labelled — the
+part with no ground truth. Each visitor judges a batch of 15 claims
 (~3 minutes): photo + claim → **TRUE** / **WRONG or can't tell**.
-Batches are assigned least-covered-first, so coverage evens out to the
-target of 3 independent judgments per item.
+Batches are assigned least-covered-first, so coverage evens out.
 
-Anonymous by design: a random id per browser, no names/emails/IPs.
+The 150 author-verdicted audit items are kept as a subset, so the crowd result
+also gives an author-bias (kappa) check.
+
+Anonymous by design: a random id per browser, no names/emails/IPs. Faces of
+people in the photos are pixelated before publication.
+
+## Rebuilding the item set
+
+    D:\uni_project\.venv\Scripts\python.exe tools/build_validation_set.py --n 2000
+
+writes `docs/items.json` + `docs/img/NNNN.jpg` (public, no verdicts) and
+`analysis/items_key.csv` (private key with predicate + author verdicts,
+gitignored). Uses the dissertation repo's `outputs/pairs.csv` + geometry cache.
 
 ```
 docs/            the static site (publish this folder)
   index.html     intro + game + end screens
   app.js         batch assignment, vote queue, zoom, keyboard
   config.js      <-- paste your backend URL here
-  items.json     the 150 claims (no verdicts, no key)
-  img/           the 150 rendered photos
+  items.json     the ~2000 claims (no verdicts, no key)
+  img/           the ~2000 rendered photos (faces pixelated)
+tools/
+  build_validation_set.py  samples + renders the claim set
+  render_clean_images.py   face-blur + render helpers (imported above)
 apps_script/
   Code.gs        Google Apps Script backend (votes -> your Google Sheet)
 analysis/
-  score_votes.py majority verdicts, kappa vs author, alpha, spam filters
+  score_votes.py crowd precision + CIs, kappa vs author, alpha, spam filters
+  items_key.csv  private key (gitignored): predicate + author verdict per item
 ```
 
 ## Setup (one-time, ~15 minutes)
@@ -50,18 +66,21 @@ see `{"counts":{},"total":0}` and a `votes` sheet appears in the Sheet.
 ### 3. Share
 
 Send the link to friends/family/course group chats. The end screen has a
-share button. 30 people × 15 judgments ≈ 450 = full 3× coverage.
-The intro and end screens show live progress toward the goal.
+share button. The pool is large: ~2000 claims × 3 judgments = ~6000 answers
+≈ 400 people at 15 each. Even one pass (each claim seen once, ~134 people)
+already gives a tight overall precision estimate; set `TARGET_VOTES_PER_ITEM`
+in `config.js` to the coverage you realistically expect. The intro and end
+screens show live progress toward the goal.
 
 ## Collecting results
 
 1. In the Google Sheet: File → Download → CSV (the `votes` sheet).
 2. `python analysis/score_votes.py votes.csv`
-   - joins the blind key + the three source audit sheets from the
-     dissertation repo (override with `--audit-root`)
-   - prints agreement + Cohen's kappa (crowd majority vs author verdicts),
-     Krippendorff's alpha (crowd-internal), per-predicate / per-source
-     breakdowns, and a per-rater spam table
+   - joins `analysis/items_key.csv` (predicate + author verdict per item)
+   - prints CROWD PRECISION overall and per predicate with 95% Wilson
+     intervals (the headline), the author-bias check (agreement + Cohen's
+     kappa, crowd vs author on the verdicted subset), Krippendorff's alpha
+     (crowd-internal), coverage, and a per-rater spam table
    - writes `majority_verdicts.csv` + `report.json`
    - useful flags: `--min-ms 800` (drop reflex-speed answers),
      `--exclude-rater <id>` (drop a spammer found in the rater table)
@@ -71,10 +90,11 @@ Ties (e.g. 1 y vs 1 n) resolve to `n`, matching the protocol's
 
 ## Notes
 
-- `_key_do_not_share.csv` and all author verdicts stay OUT of this repo
-  and off the site — the site only ever sees claim text and images.
-- The images carry the source-audit item number in their caption; raters
-  never see the source sheets, so blinding holds.
+- `analysis/items_key.csv` and all author verdicts stay OUT of this repo
+  and off the site (gitignored) — the site only ever sees claim text and
+  images, never a verdict.
+- Faces are pixelated at render time; where blurring a face would cover the
+  object a claim is about, that claim is dropped rather than shown.
 - Local test mode: while `BACKEND_URL` is empty the site banner says
   "test mode" and answers stay in the browser's localStorage.
 - Image credit: *A Spatial Relationship Aware Dataset for Robotics*

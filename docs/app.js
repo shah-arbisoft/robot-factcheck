@@ -10,7 +10,7 @@
   var TEST_MODE = BACKEND === "";
 
   // ---------- state ----------
-  var items = [];          // all 150 items from items.json
+  var items = [];          // all items from items.json
   var counts = {};         // itemId -> vote count (from backend)
   var totalVotes = 0;
   var batch = [];          // this round's items
@@ -59,6 +59,8 @@
   }
   var CAMERA_PREDS = { "to the left of": 1, "to the right of": 1, "in front of": 1, "behind": 1 };
   function hintFor(p) {
+    if (p === "in front of") return "camera’s view: the red-boxed thing is closer to the camera, the blue one further away";
+    if (p === "behind") return "camera’s view: the red-boxed thing is further from the camera than the blue one";
     if (CAMERA_PREDS[p]) return "from the camera’s point of view";
     if (p === "on" || p === "under") return "physically resting — a held object doesn’t count";
     if (p === "near") return "next to each other, close relative to their size";
