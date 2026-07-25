@@ -66,11 +66,16 @@ see `{"counts":{},"total":0}` and a `votes` sheet appears in the Sheet.
 ### 3. Share
 
 Send the link to friends/family/course group chats. The end screen has a
-share button. The pool is large: ~2000 claims × 3 judgments = ~6000 answers
-≈ 400 people at 15 each. Even one pass (each claim seen once, ~134 people)
-already gives a tight overall precision estimate; set `TARGET_VOTES_PER_ITEM`
-in `config.js` to the coverage you realistically expect. The intro and end
-screens show live progress toward the goal.
+share button. `TARGET_VOTES_PER_ITEM` in `config.js` sets the goal shown on
+screen; it is display only and never caps collection. It is currently 1 —
+one pass over the pool, ~2000 answers, ~134 people at 15 each — which
+already gives a tight overall and per-predicate precision estimate.
+
+Batches are always served least-covered-first, so answers beyond the goal
+automatically become second and third judgments on claims already seen.
+Raise `TARGET_VOTES_PER_ITEM` to 2 or 3 once a pass is complete if the
+volunteers keep coming: majority verdicts and Krippendorff's alpha need at
+least two judgments per claim.
 
 ## Collecting results
 

@@ -272,9 +272,11 @@
 
     var cs = communityStats();
     $("community-fill").style.width = cs.pct + "%";
+    // with a 1-per-claim goal "covered" counts claims checked, not raw answers
+    var unit = TARGET > 1 ? "judgments collected" : "claims checked";
     $("community-note").textContent = TEST_MODE
       ? "Test mode — answers stored on this device only."
-      : "Together: " + cs.pct + "% of the goal (" + cs.covered + " of " + cs.goal + " judgments collected).";
+      : "Together: " + cs.pct + "% of the goal (" + cs.covered + " of " + cs.goal + " " + unit + ").";
 
     var remaining = items.length - answered.length;
     var more = $("btn-more");
