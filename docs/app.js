@@ -6,6 +6,7 @@
   var BACKEND = (CFG.BACKEND_URL || "").trim();
   var BATCH = CFG.BATCH_SIZE || 15;
   var TARGET = CFG.TARGET_VOTES_PER_ITEM || 3;
+  var PRI_TARGET = CFG.PRIORITY_VOTES_PER_ITEM || TARGET;
   var LOCK_MS = CFG.MIN_ANSWER_MS || 350;
   var TEST_MODE = BACKEND === "";
   // this script's own ?v= from index.html, reused for items.json so a cached
@@ -136,17 +137,32 @@
       .finally(function () { flushing = false; });
   }
 
-  // ---------- batch selection: least-voted first ----------
+  // ---------- batch selection: furthest below its own target first ----------
+  function targetFor(it) { return it.pri ? PRI_TARGET : TARGET; }
+
   function pickBatch() {
     var done = {};
     answered.forEach(function (id) { done[id] = 1; });
     var pool = items.filter(function (it) { return !done[it.id]; });
-    // shuffle for random tie-breaking, then stable-sort by vote count
+    // shuffle for random tie-breaking, then stable-sort by how far each item
+    // is below the coverage it needs (priority items need more, so they lead)
     for (var i = pool.length - 1; i > 0; i--) {
       var j = Math.floor(Math.random() * (i + 1));
       var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
     }
-    pool.sort(function (a, b) { return (counts[a.id] || 0) - (counts[b.id] || 0); });
+    // Three keys, in order: items still short of their target come first;
+    // among those the priority (audit-overlap) items lead, because a partial
+    // sample of ordinary claims still gives an unbiased precision estimate
+    // whereas a partial priority set makes the crowd-vs-author comparison
+    // uncomputable; then least-voted first.
+    function rank(it) {
+      var c = counts[it.id] || 0;
+      return [c >= targetFor(it) ? 1 : 0, it.pri ? 0 : 1, c];
+    }
+    pool.sort(function (a, b) {
+      var ra = rank(a), rb = rank(b);
+      return (ra[0] - rb[0]) || (ra[1] - rb[1]) || (ra[2] - rb[2]);
+    });
     return pool.slice(0, BATCH);
   }
 
@@ -258,9 +274,12 @@
 
   // ---------- screens ----------
   function communityStats() {
-    var covered = 0;
-    items.forEach(function (it) { covered += Math.min(counts[it.id] || 0, TARGET); });
-    var goal = items.length * TARGET;
+    var covered = 0, goal = 0;
+    items.forEach(function (it) {
+      var t = targetFor(it);
+      goal += t;
+      covered += Math.min(counts[it.id] || 0, t);
+    });
     return { covered: covered, goal: goal, pct: goal ? Math.round(100 * covered / goal) : 0 };
   }
 

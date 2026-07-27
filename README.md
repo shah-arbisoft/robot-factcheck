@@ -66,16 +66,25 @@ see `{"counts":{},"total":0}` and a `votes` sheet appears in the Sheet.
 ### 3. Share
 
 Send the link to friends/family/course group chats. The end screen has a
-share button. `TARGET_VOTES_PER_ITEM` in `config.js` sets the goal shown on
-screen; it is display only and never caps collection. It is currently 1 —
-one pass over the pool, ~2000 answers, ~134 people at 15 each — which
-already gives a tight overall and per-predicate precision estimate.
+share button.
 
-Batches are always served least-covered-first, so answers beyond the goal
-automatically become second and third judgments on claims already seen.
-Raise `TARGET_VOTES_PER_ITEM` to 2 or 3 once a pass is complete if the
-volunteers keep coming: majority verdicts and Krippendorff's alpha need at
-least two judgments per claim.
+Coverage is **stratified**, because the two analyses need different things.
+An aggregate precision estimate only needs each claim seen once, since the
+sample is random either way, so ordinary claims target one judgment
+(`TARGET_VOTES_PER_ITEM`). The 147 claims that also carry a verdict from the
+earlier manual audit target three (`PRIORITY_VOTES_PER_ITEM`), because those
+support the crowd-vs-author comparison (Cohen's kappa) and the inter-rater
+reliability figure, and both need several independent judgments on the *same*
+item. Those claims are flagged `"pri": 1` in `items.json`.
+
+Batches are served in this order: claims still short of their own target
+first, priority claims ahead of ordinary ones, then least-voted first. The
+full goal is ~2,300 judgments (~154 people at 15 each) rather than the
+~6,000 a uniform three-vote target would need, and it degrades well: the
+priority set completes after roughly **30 people**, so the author-bias
+analysis survives a thin turnout, and everything after that widens ordinary
+coverage. Neither target caps collection; extra answers keep accumulating as
+repeat judgments.
 
 ## Collecting results
 

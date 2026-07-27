@@ -141,8 +141,14 @@ def main():
             name = "%04d.jpg" % next_id
             item.pop("img_obj").save(R.SITE / "img" / name,
                                      quality=R.JPEG_QUALITY, optimize=True)
-            items.append({"id": next_id, "img": name, "s": item["s"],
-                          "p": p, "o": item["o"], "sb": item["sb"], "ob": item["ob"]})
+            row = {"id": next_id, "img": name, "s": item["s"],
+                   "p": p, "o": item["o"], "sb": item["sb"], "ob": item["ob"]}
+            if v in ("y", "n"):
+                # carries an author verdict: needs several independent raters
+                # so the crowd-vs-author kappa and the inter-rater reliability
+                # can be computed on it (PRIORITY_VOTES_PER_ITEM in config.js)
+                row["pri"] = 1
+            items.append(row)
             key_rows.append({"id": next_id, "image_id": image_id,
                              "subject": item["s"], "predicate": p, "object": item["o"],
                              "author_verdict": v, "source": src})
