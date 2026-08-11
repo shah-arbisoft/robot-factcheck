@@ -60,6 +60,22 @@ def load_extras():
     return extras
 
 
+def load_gold():
+    """predicate -> [(image_id, subj, obj)] the HUMAN annotators wrote down.
+
+    The control arm. Judged under the identical interface and the identical
+    "WRONG when unsure" instruction, so the crowd's verdict on the tool can be
+    read against its verdict on the annotators rather than against nothing.
+    """
+    gold = defaultdict(list)
+    with open(PAIRS, newline="", encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            for k in (r["gold"].split(";") if r["gold"] else []):
+                if k in PRED_ORDER:
+                    gold[k].append((r["image_id"], int(r["subj"]), int(r["obj"])))
+    return gold
+
+
 def geometry(image_id):
     group, stem = image_id.split("/")
     geo = json.loads((R.GEO / group / (stem + ".json")).read_text(encoding="utf-8"))
@@ -100,6 +116,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=2000, help="target number of claims")
     ap.add_argument("--seed", type=int, default=7)
+    ap.add_argument("--control", type=int, default=0,
+                    help="control claims per predicate, drawn from the HUMAN "
+                         "annotations; 0 disables the arm")
+    ap.add_argument("--control-seed", type=int, default=20260811,
+                    help="separate RNG so adding the control arm cannot "
+                         "disturb the ids or images already deployed")
     args = ap.parse_args()
     rng = random.Random(args.seed)
 
@@ -155,7 +177,79 @@ def main():
             kept += 1
         print("  %-16s kept %d" % (p, kept))
 
-    # site items (shuffled so consecutive claims aren't same-predicate runs)
+    # ---- control arm -----------------------------------------------------
+    # Runs after the treatment loop, on its own RNG, so every id and image
+    # above is byte-identical to the deployed build. Control ids start at
+    # 3001: outside the 1-2002 range, so the two arms can never collide and
+    # the existing votes keep pointing at what they pointed at.
+    n_control = 0
+    if args.control:
+        rng_c = random.Random(args.control_seed)
+        gold = load_gold()
+        deployed = {(k["image_id"], k["subject"], k["object"]) for k in key_rows}
+        cid = 3000
+        for p in PRED_ORDER:
+            pool = [g for g in gold.get(p, [])]
+            rng_c.shuffle(pool)
+            kept = 0
+            for image_id, s_i, o_i in pool:
+                if kept >= args.control:
+                    break
+                res = render_claim(image_id, s_i, o_i)
+                if res is None:
+                    continue
+                item, blurred = res
+                cid += 1
+                blur_imgs += 1 if blurred else 0
+                name = "%04d.jpg" % cid
+                item.pop("img_obj").save(R.SITE / "img" / name,
+                                         quality=R.JPEG_QUALITY, optimize=True)
+                # identical shape to a treatment row: no field, and no id
+                # pattern the page exposes, distinguishes the arms
+                items.append({"id": cid, "img": name, "s": item["s"],
+                              "p": p, "o": item["o"],
+                              "sb": item["sb"], "ob": item["ob"]})
+                key_rows.append({"id": cid, "image_id": image_id,
+                                 "subject": item["s"], "predicate": p,
+                                 "object": item["o"], "author_verdict": "",
+                                 "source": "", "arm": "control"})
+                kept += 1
+                n_control += 1
+            print("  control %-16s kept %d" % (p, kept))
+
+    # the arm belongs only in the private key
+    for row in key_rows:
+        row.setdefault("arm", "treatment")
+
+    # Votes already collected point at ids in the deployed items.json. If a
+    # rebuild moved an id to a different claim, those votes would quietly
+    # become votes about a different image, so the build stops instead.
+    existing = R.SITE / "items.json"
+    if existing.exists():
+        try:
+            was = {it["id"]: it for it in json.loads(existing.read_text(encoding="utf-8"))}
+        except Exception:
+            was = {}
+        now = {it["id"]: it for it in items}
+        moved = [i for i, old_it in was.items()
+                 if i in now and any(now[i].get(k) != old_it.get(k)
+                                     for k in ("img", "s", "p", "o"))]
+        dropped = [i for i in was if i not in now]
+        if moved or dropped:
+            print("\nREFUSING TO WRITE: the deployed claim set would change.")
+            if moved:
+                print("  %d ids now point at a different claim, e.g. %s"
+                      % (len(moved), moved[:8]))
+            if dropped:
+                print("  %d ids would disappear, e.g. %s" % (len(dropped), dropped[:8]))
+            print("  Votes already collected reference these ids. Re-run with the")
+            print("  same --n and --seed as the deployed build, or move the old")
+            print("  items.json aside deliberately if you really mean to reset.")
+            return 1
+        print("  deployed claim set unchanged (%d ids verified)" % len(was))
+
+    # site items (shuffled so consecutive claims aren't same-predicate runs,
+    # and so control claims are interleaved rather than grouped at the end)
     rng.shuffle(items)
     with open(R.SITE / "items.json", "w", encoding="utf-8") as f:
         f.write("[\n" + ",\n".join(json.dumps(it, separators=(",", ":")) for it in items) + "\n]\n")
@@ -173,6 +267,9 @@ def main():
         w.writeheader()
         w.writerows(sorted(key_rows, key=lambda r: r["id"]))
 
+    if n_control:
+        print("  control arm: %d claims from the human annotations, ids 3001-%d"
+              % (n_control, 3000 + n_control))
     n_auth = sum(1 for r in key_rows if r["author_verdict"] in ("y", "n"))
     print("\nbuilt %d claims -> %s (removed %d stale)" % (len(items), R.SITE / "img", removed))
     print("faces anonymised in %d images; %d carry an author verdict (kappa subset)"

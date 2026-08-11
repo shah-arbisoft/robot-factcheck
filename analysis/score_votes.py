@@ -166,6 +166,22 @@ def main():
 
     # ---- author-bias check ----
     author_pairs = [(majority[i], author[i]) for i in majority if i in author]
+    # --- the control arm --------------------------------------------------
+    # key rows carry arm=treatment (the tool's extra predictions) or
+    # arm=control (relations a human annotator wrote down). Same raters, same
+    # images, same instruction: the only difference is who produced the label.
+    arms = defaultdict(list)
+    for item in majority:
+        arms[(key.get(item, {}).get("arm") or "treatment")].append(item)
+
+    arm_stats = {}
+    for arm, ids in sorted(arms.items()):
+        n, (prop, lo, hi) = precision(ids)
+        k = sum(1 for i in ids if majority[i] == "y")
+        arm_stats[arm] = {"claims": n, "judged_true": k,
+                          "precision": (k / n) if n else None,
+                          "wilson95": [round(lo, 4), round(hi, 4)]}
+
     po_auth, kappa_auth = cohen_kappa(author_pairs)
 
     # ---- crowd-internal reliability ----
@@ -225,6 +241,7 @@ def main():
         "crowd_precision_per_predicate": per_pred_prec,
         "author_bias_check": {"n": len(author_pairs), "agreement": po_auth,
                               "kappa": kappa_auth},
+        "by_arm": arm_stats,
         "krippendorff_alpha_crowd": alpha,
         "raters": rater_rows,
     }
@@ -243,6 +260,26 @@ def main():
         else:
             print("  %-16s %6d      n/a" % (pr, 0))
     print("\n=== author-bias check (crowd vs author verdicts) ===")
+    if len(arm_stats) > 1:
+        print("\nBY ARM (the comparison the control exists for)")
+        for arm in ("treatment", "control"):
+            a = arm_stats.get(arm)
+            if a and a["precision"] is not None:
+                print("  %-10s %4d claims   crowd precision %.3f  [%.2f, %.2f]"
+                      % (arm, a["claims"], a["precision"],
+                         a["wilson95"][0], a["wilson95"][1]))
+        t, c = arm_stats.get("treatment"), arm_stats.get("control")
+        if t and c and t["precision"] is not None and c["precision"] is not None:
+            d = t["precision"] - c["precision"]
+            overlap = not (t["wilson95"][1] < c["wilson95"][0]
+                           or c["wilson95"][1] < t["wilson95"][0])
+            print("  difference %+.3f (tool minus human); intervals %s"
+                  % (d, "overlap, so not separated at this sample"
+                     if overlap else "are disjoint"))
+    else:
+        print("\nBY ARM: no control claims in the key yet -- rebuild the item "
+              "set with --control N to make the precision figure interpretable")
+
     print("n=%d  agreement=%.3f  Cohen's kappa=%.3f" % (len(author_pairs), po_auth, kappa_auth))
     print("crowd-internal Krippendorff alpha (>=2 votes): %.3f" % alpha)
     print("ties resolved to 'n': %d" % ties)

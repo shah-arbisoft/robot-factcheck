@@ -54,6 +54,19 @@
       : "r" + Date.now() + "_" + Math.random().toString(36).slice(2, 10);
     store("fc_rater", rater);
   }
+  // Every vote carries an id minted once, at answer time, and never
+  // regenerated on a retry. A flush whose response never reaches the client
+  // (tab hidden, network dropped after the request was delivered) leaves the
+  // queue intact and re-sends votes the server already wrote: that is how the
+  // 11 August export came to hold rows identical down to the millisecond. The
+  // client cannot know whether a lost response meant a lost write, so the
+  // server skips any vid it has already seen.
+  function newVid() {
+    return (window.crypto && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : "v" + Date.now() + "_" + Math.random().toString(36).slice(2, 12);
+  }
+
   var answered = load("fc_answered", []); // item ids this browser already judged
 
   // ---------- display names ----------
@@ -250,6 +263,7 @@
     btn.classList.remove("pop"); void btn.offsetWidth; btn.classList.add("pop");
 
     sendVote({
+      vid: newVid(),
       rater: rater,
       item: it.id,
       verdict: verdict,
